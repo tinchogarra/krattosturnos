@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Kratto's Barbería | Reservá tu turno</title>
+
+  <meta name="theme-color" content="#111111">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111111;
+      color: #ffffff;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 35px 20px 25px;
+      border-bottom: 1px solid #333333;
+    }
+
+    .logo {
+      font-size: 27px;
+      font-weight: 800;
+      letter-spacing: 2px;
+    }
+
+    .subtitle {
+      margin-top: 12px;
+      color: #b9b9b9;
+      font-size: 13px;
+      letter-spacing: 3px;
+    }
+
+    main {
+      width: 100%;
+      max-width: 520px;
+      margin: auto;
+      padding: 28px 20px 45px;
+    }
+
+    h1 {
+      font-size: 24px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      margin: 20px 0 9px;
+      color: #e5e5e5;
+    }
+
+    .services {
+      display: grid;
+      gap: 12px;
+    }
+
+    .service {
+      width: 100%;
+      padding: 18px;
+      background: #1b1b1b;
+      color: #ffffff;
+      border: 1px solid #444444;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .service.selected {
+      border: 1px solid #d2b078;
+      background: #292319;
+    }
+
+    input, select {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 7px;
+      border: 1px solid #444444;
+      background: #1b1b1b;
+      color: #ffffff;
+      font-size: 16px;
+    }
+
+    input:focus, select:focus {
+      outline: 1px solid #d2b078;
+    }
+
+    .duration {
+      color: #b9b9b9;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .reserve {
+      display: block;
+      width: 100%;
+      margin-top: 28px;
+      padding: 17px;
+      border: none;
+      border-radius: 7px;
+      background: #d2b078;
+      color: #111111;
+      font-size: 15px;
+      font-weight: bold;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    .reserve:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .notice {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 7px;
+      background: #222222;
+      color: #eeeeee;
+      font-size: 13px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid #333333;
+      color: #888888;
+      font-size: 12px;
+    }
+
+    @media (max-width: 360px) {
+      .logo {
+        font-size: 23px;
+      }
+
+      h1 {
+        font-size: 21px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="logo">KRATTOS BARBERÍA</div>
+    <div class="subtitle">MEJORÁ TU IMAGEN</div>
+  </header>
+
+  <main>
+    <h1>RESERVÁ TU TURNO</h1>
+
+    <form id="bookingForm">
+
+      <label>ELIGE TU SERVICIO</label>
+
+      <div class="services">
+
+        <button type="button"
+          class="service"
+          data-service="CORTE">
+          CORTE
+        </button>
+
+        <button type="button"
+          class="service"
+          data-service="SERVICIO DE BARBA">
+          SERVICIO DE BARBA
+        </button>
+
+        <button type="button"
+          class="service"
+          data-service="CORTE + BARBA">
+          CORTE + BARBA
+        </button>
+
+      </div>
+
+      <label for="fecha">Elegí el día</label>
+      <input type="date" id="fecha" required>
+
+      <label for="hora">Elegí el horario</label>
+      <select id="hora" required>
+        <option value="">Seleccioná una fecha primero</option>
+      </select>
+
+      <p class="duration">
+        Todos los servicios tienen una duración de 30 minutos.
+      </p>
+
+      <label for="nombre">Tu nombre</label>
+      <input
+        type="text"
+        id="nombre"
+        placeholder="Ingresá tu nombre"
+        autocomplete="name"
+        required
+      >
+
+      <label for="telefono">Tu teléfono</label>
+      <input
+        type="tel"
+        id="telefono"
+        placeholder="Ingresá tu número"
+        autocomplete="tel"
+        required
+      >
+
+      <button type="submit" class="reserve" id="reserveButton">
+        RESERVAR TURNO
+      </button>
+
+      <div class="notice" id="notice" role="status"></div>
+
+    </form>
+  </main>
+
+  <footer>
+    KRATTOS BARBERÍA · MEJORÁ TU IMAGEN
+  </footer>
+
+  <script>
+    const services = document.querySelectorAll(".service");
+    const form = document.getElementById("bookingForm");
+    const dateInput = document.getElementById("fecha");
+    const timeSelect = document.getElementById("hora");
+    const notice = document.getElementById("notice");
+
+    let selectedService = "";
+
+    // No permitir elegir fechas pasadas.
+    const today = new Date();
+    const localToday = new Date(
+      today.getTime() - today.getTimezoneOffset() * 60000
+    ).toISOString().split("T")[0];
+
+    dateInput.min = localToday;
+
+    // Selección del servicio.
+    services.forEach(button => {
+      button.addEventListener("click", () => {
+        services.forEach(item => {
+          item.classList.remove("selected");
+        });
+
+        button.classList.add("selected");
+        selectedService = button.dataset.service;
+
+        hideNotice();
+      });
+    });
+
+    // La disponibilidad real se conectará a la base de datos.
+    dateInput.addEventListener("change", () => {
+      timeSelect.innerHTML =
+        '<option value="">Disponibilidad pendiente de configurar</option>';
+
+      showNotice(
+        "La página todavía necesita conectarse al sistema de turnos " +
+        "para mostrar los horarios disponibles."
+      );
+    });
+
+    function showNotice(message) {
+      notice.textContent = message;
+      notice.style.display = "block";
+    }
+
+    function hideNotice() {
+      notice.style.display = "none";
+    }
+
+    // Evitar confirmar reservas antes de configurar el sistema real.
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      if (!selectedService) {
+        showNotice("Primero elegí uno de los tres servicios.");
+        return;
+      }
+
+      showNotice(
+        "La página está preparada visualmente, pero las reservas " +
+        "todavía no están activas. Falta conectar la base de datos " +
+        "y configurar los horarios disponibles."
+      );
+    });
+  </script>
+
+</body>
+</html>

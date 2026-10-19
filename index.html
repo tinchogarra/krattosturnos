@@ -234,73 +234,170 @@
     KRATTOS BARBERÍA · MEJORÁ TU IMAGEN
   </footer>
 
-  <script>
-    const services = document.querySelectorAll(".service");
-    const form = document.getElementById("bookingForm");
-    const dateInput = document.getElementById("fecha");
-    const timeSelect = document.getElementById("hora");
-    const notice = document.getElementById("notice");
+ <script>
+  const services = document.querySelectorAll(".service");
+  const form = document.getElementById("bookingForm");
+  const dateInput = document.getElementById("fecha");
+  const timeSelect = document.getElementById("hora");
+  const notice = document.getElementById("notice");
 
-    let selectedService = "";
+  let selectedService = "";
 
-    // No permitir elegir fechas pasadas.
-    const today = new Date();
-    const localToday = new Date(
-      today.getTime() - today.getTimezoneOffset() * 60000
-    ).toISOString().split("T")[0];
+  // Fecha actual en horario local de Argentina.
+  function getLocalDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
 
-    dateInput.min = localToday;
+    return `${year}-${month}-${day}`;
+  }
 
-    // Selección del servicio.
-    services.forEach(button => {
-      button.addEventListener("click", () => {
-        services.forEach(item => {
-          item.classList.remove("selected");
-        });
+  dateInput.min = getLocalDate();
 
-        button.classList.add("selected");
-        selectedService = button.dataset.service;
+  // Selección del servicio.
+  services.forEach(button => {
+    button.addEventListener("click", () => {
+      services.forEach(item => item.classList.remove("selected"));
+      button.classList.add("selected");
 
-        hideNotice();
-      });
+      selectedService = button.dataset.service;
+      hideNotice();
     });
+  });
 
-    // La disponibilidad real se conectará a la base de datos.
-    dateInput.addEventListener("change", () => {
-      timeSelect.innerHTML =
-        '<option value="">Disponibilidad pendiente de configurar</option>';
+  // Horarios de atención.
+  function getBusinessHours(dateString) {
+    const date = new Date(dateString + "T12:00:00");
+    const day = date.getDay();
 
-      showNotice(
-        "La página todavía necesita conectarse al sistema de turnos " +
-        "para mostrar los horarios disponibles."
-      );
-    });
+    if (day === 0) return []; // Domingo
 
-    function showNotice(message) {
-      notice.textContent = message;
-      notice.style.display = "block";
+    if (day === 1) {
+      return [["16:30", "20:30"]];
     }
 
-    function hideNotice() {
-      notice.style.display = "none";
+    if (day >= 2 && day <= 5) {
+      return [
+        ["10:00", "13:00"],
+        ["16:30", "20:30"]
+      ];
     }
 
-    // Evitar confirmar reservas antes de configurar el sistema real.
-    form.addEventListener("submit", event => {
-      event.preventDefault();
+    if (day === 6) {
+      return [
+        ["10:00", "13:30"],
+        ["17:30", "20:30"]
+      ];
+    }
 
-      if (!selectedService) {
-        showNotice("Primero elegí uno de los tres servicios.");
-        return;
+    return [];
+  }
+
+  // Generar turnos de 30 minutos.
+  function loadAvailableHours() {
+    const selectedDate = dateInput.value;
+
+    timeSelect.innerHTML = "";
+
+    if (!selectedDate) {
+      addOption("", "Seleccioná una fecha primero");
+      return;
+    }
+
+    const periods = getBusinessHours(selectedDate);
+    const availableHours = [];
+
+    periods.forEach(([start, end]) => {
+      let current = toMinutes(start);
+      const finish = toMinutes(end);
+
+      while (current + 30 <= finish) {
+        availableHours.push(toTime(current));
+        current += 30;
       }
-
-      showNotice(
-        "La página está preparada visualmente, pero las reservas " +
-        "todavía no están activas. Falta conectar la base de datos " +
-        "y configurar los horarios disponibles."
-      );
     });
-  </script>
+
+    // Si la fecha elegida es hoy, ocultar los horarios que ya pasaron.
+    const now = new Date();
+    const isToday = selectedDate === getLocalDate();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const futureHours = availableHours.filter(time => {
+      return !isToday || toMinutes(time) > currentMinutes;
+    });
+
+    if (futureHours.length === 0) {
+      addOption(
+        "",
+        periods.length === 0
+          ? "Cerrado este día"
+          : "No quedan horarios para este día"
+      );
+      return;
+    }
+
+    addOption("", "Seleccioná un horario");
+
+    futureHours.forEach(time => {
+      addOption(time, time);
+    });
+  }
+
+  function toMinutes(time) {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  }
+
+  function toTime(minutes) {
+    const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const mins = String(minutes % 60).padStart(2, "0");
+
+    return `${hours}:${mins}`;
+  }
+
+  function addOption(value, text) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    timeSelect.appendChild(option);
+  }
+
+  function showNotice(message) {
+    notice.textContent = message;
+    notice.style.display = "block";
+  }
+
+  function hideNotice() {
+    notice.style.display = "none";
+  }
+
+  dateInput.addEventListener("change", () => {
+    loadAvailableHours();
+    hideNotice();
+  });
+
+  // Todavía no confirma ni guarda reservas.
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+
+    if (!selectedService) {
+      showNotice("Primero elegí uno de los tres servicios.");
+      return;
+    }
+
+    if (!dateInput.value || !timeSelect.value) {
+      showNotice("Elegí una fecha y un horario para continuar.");
+      return;
+    }
+
+    showNotice(
+      "Los horarios ya están configurados, pero las reservas " +
+      "todavía no se guardan. Falta conectar el sistema de turnos."
+    );
+  });
+</script>
+ 
 
 </body>
 </html>

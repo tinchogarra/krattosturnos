@@ -393,8 +393,78 @@
 
     showNotice(
       "Los horarios ya están configurados, pero las reservas " +
-      "todavía no se guardan. Falta conectar el sistema de turnos."
-    );
+      // Guardar reserva en el Worker
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+
+    if (!selectedService) {
+      showNotice("Primero elegí uno de los tres servicios.");
+      return;
+    }
+
+    if (!dateInput.value || !timeSelect.value) {
+      showNotice("Elegí una fecha y un horario para continuar.");
+      return;
+    }
+
+    const fecha = dateInput.value;
+    const hora = timeSelect.value;
+    const nombre = document.getElementById("nombre").value.trim();
+    const telefono = document.getElementById("telefono").value.trim();
+
+    if (!nombre || !telefono) {
+      showNotice("Completá tu nombre y teléfono.");
+      return;
+    }
+
+    const reserveButton = document.getElementById("reserveButton");
+
+    reserveButton.disabled = true;
+    reserveButton.textContent = "RESERVANDO...";
+
+    try {
+      const response = await fetch(
+        "https://krattos-turnos-api.tinchogarra80.workers.dev/api/turnos",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            fecha,
+            hora,
+            servicio: selectedService,
+            nombre,
+            telefono
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showNotice(data.error || "No se pudo reservar el turno.");
+        return;
+      }
+
+      showNotice(
+        "¡Turno reservado correctamente! " +
+        `${fecha} a las ${hora}.`
+      );
+
+      form.reset();
+      services.forEach(item => item.classList.remove("selected"));
+      selectedService = "";
+      loadAvailableHours();
+
+    } catch (error) {
+      showNotice(
+        "No se pudo conectar con el sistema de turnos."
+      );
+    } finally {
+      reserveButton.disabled = false;
+      reserveButton.textContent = "RESERVAR TURNO";
+    }
   });
 </script>
  

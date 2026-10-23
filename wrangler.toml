@@ -1,1 +1,6 @@
+name = "krattos-turnos-api"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "krattos-turnos"
+database_id = "0aea9251-af70-4da9-bc1e-dcb1879577fe"

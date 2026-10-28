@@ -83,7 +83,8 @@
       background: #292319;
     }
 
-    input, select {
+    input,
+    select {
       display: block;
       width: 100%;
       padding: 14px;
@@ -94,7 +95,8 @@
       font-size: 16px;
     }
 
-    input:focus, select:focus {
+    input:focus,
+    select:focus {
       outline: 1px solid #d2b078;
     }
 
@@ -171,19 +173,22 @@
 
       <div class="services">
 
-        <button type="button"
+        <button
+          type="button"
           class="service"
           data-service="CORTE">
           CORTE
         </button>
 
-        <button type="button"
+        <button
+          type="button"
           class="service"
           data-service="SERVICIO DE BARBA">
           SERVICIO DE BARBA
         </button>
 
-        <button type="button"
+        <button
+          type="button"
           class="service"
           data-service="CORTE + BARBA">
           CORTE + BARBA
@@ -192,11 +197,19 @@
       </div>
 
       <label for="fecha">Elegí el día</label>
-      <input type="date" id="fecha" required>
+
+      <input
+        type="date"
+        id="fecha"
+        required
+      >
 
       <label for="hora">Elegí el horario</label>
+
       <select id="hora" required>
-        <option value="">Seleccioná una fecha primero</option>
+        <option value="">
+          Seleccioná una fecha primero
+        </option>
       </select>
 
       <p class="duration">
@@ -204,6 +217,7 @@
       </p>
 
       <label for="nombre">Tu nombre</label>
+
       <input
         type="text"
         id="nombre"
@@ -213,6 +227,7 @@
       >
 
       <label for="telefono">Tu teléfono</label>
+
       <input
         type="tel"
         id="telefono"
@@ -221,11 +236,18 @@
         required
       >
 
-      <button type="submit" class="reserve" id="reserveButton">
+      <button
+        type="submit"
+        class="reserve"
+        id="reserveButton">
         RESERVAR TURNO
       </button>
 
-      <div class="notice" id="notice" role="status"></div>
+      <div
+        class="notice"
+        id="notice"
+        role="status">
+      </div>
 
     </form>
   </main>
@@ -234,240 +256,573 @@
     KRATTOS BARBERÍA · MEJORÁ TU IMAGEN
   </footer>
 
- <script>
-  const services = document.querySelectorAll(".service");
-  const form = document.getElementById("bookingForm");
-  const dateInput = document.getElementById("fecha");
-  const timeSelect = document.getElementById("hora");
-  const notice = document.getElementById("notice");
+  <script>
 
-  let selectedService = "";
+    const services =
+      document.querySelectorAll(".service");
 
-  // Fecha actual en horario local de Argentina.
-  function getLocalDate() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+    const form =
+      document.getElementById("bookingForm");
 
-    return `${year}-${month}-${day}`;
-  }
+    const dateInput =
+      document.getElementById("fecha");
 
-  dateInput.min = getLocalDate();
+    const timeSelect =
+      document.getElementById("hora");
 
-  // Selección del servicio.
-  services.forEach(button => {
-    button.addEventListener("click", () => {
-      services.forEach(item => item.classList.remove("selected"));
-      button.classList.add("selected");
+    const notice =
+      document.getElementById("notice");
 
-      selectedService = button.dataset.service;
-      hideNotice();
-    });
-  });
+    const reserveButton =
+      document.getElementById("reserveButton");
 
-  // Horarios de atención.
-  function getBusinessHours(dateString) {
-    const date = new Date(dateString + "T12:00:00");
-    const day = date.getDay();
 
-    if (day === 0) return []; // Domingo
+    let selectedService = "";
 
-    if (day === 1) {
-      return [["16:30", "20:30"]];
+
+    /*
+      DIRECCIÓN DEL WORKER
+    */
+
+    const API_URL =
+      "https://krattos-turnos-api.tinchogarra80.workers.dev";
+
+
+    /*
+      FECHA ACTUAL
+    */
+
+    function getLocalDate() {
+
+      const now = new Date();
+
+      const year =
+        now.getFullYear();
+
+      const month =
+        String(now.getMonth() + 1)
+          .padStart(2, "0");
+
+      const day =
+        String(now.getDate())
+          .padStart(2, "0");
+
+      return `${year}-${month}-${day}`;
     }
 
-    if (day >= 2 && day <= 5) {
-      return [
-        ["10:00", "13:00"],
-        ["16:30", "20:30"]
-      ];
-    }
 
-    if (day === 6) {
-      return [
-        ["10:00", "13:30"],
-        ["17:30", "20:30"]
-      ];
-    }
+    dateInput.min =
+      getLocalDate();
 
-    return [];
-  }
 
-  // Generar turnos de 30 minutos.
-  function loadAvailableHours() {
-    const selectedDate = dateInput.value;
+    /*
+      SELECCIÓN DEL SERVICIO
+    */
 
-    timeSelect.innerHTML = "";
+    services.forEach(button => {
 
-    if (!selectedDate) {
-      addOption("", "Seleccioná una fecha primero");
-      return;
-    }
+      button.addEventListener(
+        "click",
+        () => {
 
-    const periods = getBusinessHours(selectedDate);
-    const availableHours = [];
+          services.forEach(item => {
 
-    periods.forEach(([start, end]) => {
-      let current = toMinutes(start);
-      const finish = toMinutes(end);
+            item.classList.remove(
+              "selected"
+            );
 
-      while (current + 30 <= finish) {
-        availableHours.push(toTime(current));
-        current += 30;
-      }
-    });
+          });
 
-    // Si la fecha elegida es hoy, ocultar los horarios que ya pasaron.
-    const now = new Date();
-    const isToday = selectedDate === getLocalDate();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          button.classList.add(
+            "selected"
+          );
 
-    const futureHours = availableHours.filter(time => {
-      return !isToday || toMinutes(time) > currentMinutes;
-    });
+          selectedService =
+            button.dataset.service;
 
-    if (futureHours.length === 0) {
-      addOption(
-        "",
-        periods.length === 0
-          ? "Cerrado este día"
-          : "No quedan horarios para este día"
-      );
-      return;
-    }
+          hideNotice();
 
-    addOption("", "Seleccioná un horario");
-
-    futureHours.forEach(time => {
-      addOption(time, time);
-    });
-  }
-
-  function toMinutes(time) {
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
-  }
-
-  function toTime(minutes) {
-    const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
-    const mins = String(minutes % 60).padStart(2, "0");
-
-    return `${hours}:${mins}`;
-  }
-
-  function addOption(value, text) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = text;
-    timeSelect.appendChild(option);
-  }
-
-  function showNotice(message) {
-    notice.textContent = message;
-    notice.style.display = "block";
-  }
-
-  function hideNotice() {
-    notice.style.display = "none";
-  }
-
-  dateInput.addEventListener("change", () => {
-    loadAvailableHours();
-    hideNotice();
-  });
-
-  // Todavía no confirma ni guarda reservas.
-  form.addEventListener("submit", event => {
-    event.preventDefault();
-
-    if (!selectedService) {
-      showNotice("Primero elegí uno de los tres servicios.");
-      return;
-    }
-
-    if (!dateInput.value || !timeSelect.value) {
-      showNotice("Elegí una fecha y un horario para continuar.");
-      return;
-    }
-
-    showNotice(
-      "Los horarios ya están configurados, pero las reservas " +
-      // Guardar reserva en el Worker
-  form.addEventListener("submit", async event => {
-    event.preventDefault();
-
-    if (!selectedService) {
-      showNotice("Primero elegí uno de los tres servicios.");
-      return;
-    }
-
-    if (!dateInput.value || !timeSelect.value) {
-      showNotice("Elegí una fecha y un horario para continuar.");
-      return;
-    }
-
-    const fecha = dateInput.value;
-    const hora = timeSelect.value;
-    const nombre = document.getElementById("nombre").value.trim();
-    const telefono = document.getElementById("telefono").value.trim();
-
-    if (!nombre || !telefono) {
-      showNotice("Completá tu nombre y teléfono.");
-      return;
-    }
-
-    const reserveButton = document.getElementById("reserveButton");
-
-    reserveButton.disabled = true;
-    reserveButton.textContent = "RESERVANDO...";
-
-    try {
-      const response = await fetch(
-        "https://krattos-turnos-api.tinchogarra80.workers.dev/api/turnos",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            fecha,
-            hora,
-            servicio: selectedService,
-            nombre,
-            telefono
-          })
         }
       );
 
-      const data = await response.json();
+    });
 
-      if (!response.ok) {
-        showNotice(data.error || "No se pudo reservar el turno.");
+
+    /*
+      HORARIOS DE KRATTOS
+    */
+
+    function getBusinessHours(
+      dateString
+    ) {
+
+      const date =
+        new Date(
+          dateString +
+          "T12:00:00"
+        );
+
+      const day =
+        date.getDay();
+
+
+      // Domingo cerrado
+
+      if (day === 0) {
+        return [];
+      }
+
+
+      // Lunes
+
+      if (day === 1) {
+
+        return [
+          ["16:30", "20:30"]
+        ];
+
+      }
+
+
+      // Martes a viernes
+
+      if (
+        day >= 2 &&
+        day <= 5
+      ) {
+
+        return [
+          ["10:00", "13:00"],
+          ["16:30", "20:30"]
+        ];
+
+      }
+
+
+      // Sábado
+
+      if (day === 6) {
+
+        return [
+          ["10:00", "13:30"],
+          ["17:30", "20:30"]
+        ];
+
+      }
+
+
+      return [];
+    }
+
+
+    /*
+      CONVERTIR HORA A MINUTOS
+    */
+
+    function toMinutes(time) {
+
+      const [
+        hours,
+        minutes
+      ] =
+        time
+          .split(":")
+          .map(Number);
+
+      return (
+        hours * 60 +
+        minutes
+      );
+    }
+
+
+    /*
+      CONVERTIR MINUTOS A HORA
+    */
+
+    function toTime(minutes) {
+
+      const hours =
+        String(
+          Math.floor(
+            minutes / 60
+          )
+        ).padStart(2, "0");
+
+      const mins =
+        String(
+          minutes % 60
+        ).padStart(2, "0");
+
+      return `${hours}:${mins}`;
+    }
+
+
+    /*
+      AGREGAR OPCIÓN AL SELECTOR
+    */
+
+    function addOption(
+      value,
+      text
+    ) {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value = value;
+
+      option.textContent = text;
+
+      timeSelect.appendChild(
+        option
+      );
+    }
+
+
+    /*
+      MENSAJES
+    */
+
+    function showNotice(
+      message
+    ) {
+
+      notice.textContent =
+        message;
+
+      notice.style.display =
+        "block";
+    }
+
+
+    function hideNotice() {
+
+      notice.style.display =
+        "none";
+    }
+
+
+    /*
+      CARGAR HORARIOS
+    */
+
+    async function loadAvailableHours() {
+
+      const selectedDate =
+        dateInput.value;
+
+
+      timeSelect.innerHTML =
+        "";
+
+
+      if (!selectedDate) {
+
+        addOption(
+          "",
+          "Seleccioná una fecha primero"
+        );
+
         return;
       }
 
-      showNotice(
-        "¡Turno reservado correctamente! " +
-        `${fecha} a las ${hora}.`
+
+      timeSelect.disabled =
+        true;
+
+
+      addOption(
+        "",
+        "Cargando horarios..."
       );
 
-      form.reset();
-      services.forEach(item => item.classList.remove("selected"));
-      selectedService = "";
-      loadAvailableHours();
 
-    } catch (error) {
-      showNotice(
-        "No se pudo conectar con el sistema de turnos."
-      );
-    } finally {
-      reserveButton.disabled = false;
-      reserveButton.textContent = "RESERVAR TURNO";
+      try {
+
+        const response =
+          await fetch(
+            `${API_URL}/api/turnos?fecha=${encodeURIComponent(selectedDate)}`
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            data.error ||
+            "No se pudieron cargar los horarios."
+          );
+
+        }
+
+
+        timeSelect.innerHTML =
+          "";
+
+
+        const horarios =
+          data.horarios || [];
+
+
+        if (
+          horarios.length === 0
+        ) {
+
+          addOption(
+            "",
+            "No hay horarios disponibles"
+          );
+
+          return;
+        }
+
+
+        addOption(
+          "",
+          "Seleccioná un horario"
+        );
+
+
+        horarios.forEach(
+          hora => {
+
+            addOption(
+              hora,
+              hora
+            );
+
+          }
+        );
+
+
+      } catch (error) {
+
+        console.error(error);
+
+
+        timeSelect.innerHTML =
+          "";
+
+
+        addOption(
+          "",
+          "Error al cargar horarios"
+        );
+
+
+      } finally {
+
+        timeSelect.disabled =
+          false;
+
+      }
+
     }
-  });
-</script>
- 
+
+
+    /*
+      CAMBIO DE FECHA
+    */
+
+    dateInput.addEventListener(
+      "change",
+      () => {
+
+        loadAvailableHours();
+
+        hideNotice();
+
+      }
+    );
+
+
+    /*
+      RESERVAR TURNO
+    */
+
+    form.addEventListener(
+      "submit",
+      async event => {
+
+        event.preventDefault();
+
+
+        if (!selectedService) {
+
+          showNotice(
+            "Primero elegí uno de los tres servicios."
+          );
+
+          return;
+        }
+
+
+        if (
+          !dateInput.value ||
+          !timeSelect.value
+        ) {
+
+          showNotice(
+            "Elegí una fecha y un horario para continuar."
+          );
+
+          return;
+        }
+
+
+        const nombre =
+          document
+            .getElementById(
+              "nombre"
+            )
+            .value
+            .trim();
+
+
+        const telefono =
+          document
+            .getElementById(
+              "telefono"
+            )
+            .value
+            .trim();
+
+
+        if (
+          !nombre ||
+          !telefono
+        ) {
+
+          showNotice(
+            "Completá tu nombre y teléfono."
+          );
+
+          return;
+        }
+
+
+        reserveButton.disabled =
+          true;
+
+
+        reserveButton.textContent =
+          "RESERVANDO...";
+
+
+        try {
+
+          const response =
+            await fetch(
+              `${API_URL}/api/turnos`,
+              {
+                method: "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+                    fecha:
+                      dateInput.value,
+
+                    hora:
+                      timeSelect.value,
+
+                    servicio:
+                      selectedService,
+
+                    nombre:
+                      nombre,
+
+                    telefono:
+                      telefono
+                  })
+              }
+            );
+
+
+          const data =
+            await response.json();
+
+
+          if (!response.ok) {
+
+            showNotice(
+              data.error ||
+              "No se pudo reservar el turno."
+            );
+
+            return;
+          }
+
+
+          showNotice(
+            `¡Turno reservado correctamente! ` +
+            `${dateInput.value} a ${timeSelect.value}.`
+          );
+
+
+          form.reset();
+
+
+          services.forEach(
+            item => {
+
+              item.classList.remove(
+                "selected"
+              );
+
+            }
+          );
+
+
+          selectedService =
+            "";
+
+
+          timeSelect.innerHTML =
+            "";
+
+
+          addOption(
+            "",
+            "Seleccioná una fecha primero"
+          );
+
+
+        } catch (error) {
+
+          console.error(error);
+
+
+          showNotice(
+            "No se pudo conectar con el sistema de turnos."
+          );
+
+
+        } finally {
+
+          reserveButton.disabled =
+            false;
+
+
+          reserveButton.textContent =
+            "RESERVAR TURNO";
+
+        }
+
+      }
+    );
+
+  </script>
 
 </body>
 </html>
